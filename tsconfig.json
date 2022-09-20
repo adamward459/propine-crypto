@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ESNext",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "moduleResolution": "Node16",
+    "outDir": "build",
+    "baseUrl": "."
+  },
+  "exclude": [
+    ".yarn",
+    "node_modules"
+  ],
+  "include": [
+    "src"
+  ]
+}
