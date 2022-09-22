@@ -1,15 +1,19 @@
 import { AbstractCommand } from "./abstract.command";
 import { Command } from "commander";
 
-export class DateCommand extends AbstractCommand {
+export class BaseCommand extends AbstractCommand {
   load(program: Command) {
     program
       .option(
         "--date <date>",
         "Get the portfolio value per token in USD on that date"
       )
-      .action(async (csvFile: string, options: { date: boolean | string }) => {
-        await this.action.handle(csvFile, options);
+      .option(
+        "--token <token>",
+        "Get the latest portfolio value for that token in USD"
+      )
+      .action((csvFile, options) => {
+        this.action.handle(csvFile, options);
       });
   }
 }

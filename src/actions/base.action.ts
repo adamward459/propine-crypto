@@ -1,12 +1,11 @@
 import fs from "node:fs";
 import csvParser from "csv-parser";
-import axios from "axios";
 import moment from "moment";
 
 import { AbstractAction } from "./abstract.action";
 import { TransactionLog } from "../transaction-log";
 
-export class DateAction extends AbstractAction {
+export class BaseAction extends AbstractAction {
   csvHeaders = ["timestamp", "transaction_type", "token", "amount"];
 
   async handle(
@@ -18,18 +17,21 @@ export class DateAction extends AbstractAction {
       process.exit(0);
     }
 
+    const token = options.token;
     const date = options.date;
     let startUnix = 0,
       endUnix = 0;
-    if (moment(date, "YYYY-MM-DD", true).isValid()) {
-      startUnix = moment(date).startOf("date").unix();
-      endUnix = moment(date).endOf("date").unix();
-    } else {
-      console.log(`${date} is not a valid date`);
-      process.exit(0);
+    if (date !== undefined) {
+      if (moment(date, "YYYY-MM-DD", true).isValid()) {
+        startUnix = moment(date).startOf("date").unix();
+        endUnix = moment(date).endOf("date").unix();
+      } else {
+        console.log(`${date} is not a valid date`);
+        process.exit(0);
+      }
     }
-    const totalPerToken: Record<string, number> = {};
 
+    const totalPerToken: Record<string, number> = {};
     console.log("Running...");
 
     fs.createReadStream(csvFile)
@@ -43,8 +45,21 @@ export class DateAction extends AbstractAction {
         }
       })
       .on("data", (row: TransactionLog) => {
-        if (row.timestamp <= endUnix && row.timestamp >= startUnix) {
-          totalPerToken[row.token] = totalPerToken[row.token] ?? 0;
+        const cond =
+          (!token && !date) ||
+          (token &&
+            date &&
+            row.timestamp <= endUnix &&
+            row.timestamp >= startUnix &&
+            row.token === token) ||
+          (!date && token && row.token === token) ||
+          (!token &&
+            date &&
+            row.timestamp <= endUnix &&
+            row.timestamp >= startUnix);
+
+        if (cond) {
+          totalPerToken[row.token] ??= 0;
           if (row.transaction_type === "DEPOSIT") {
             totalPerToken[row.token] += parseFloat(row.amount);
           } else if (row.transaction_type === "WITHDRAWAL") {
@@ -55,7 +70,7 @@ export class DateAction extends AbstractAction {
       .on("end", async () => {
         const tokens = Object.keys(totalPerToken);
         if (tokens.length === 0) {
-          console.log(`No info on given date ${date}`);
+          console.log("No info");
         } else {
           const portfolios = await Promise.all(
             tokens.map((t) =>
